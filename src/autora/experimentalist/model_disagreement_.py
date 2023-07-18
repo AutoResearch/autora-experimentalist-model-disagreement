@@ -8,12 +8,12 @@ from sklearn.base import BaseEstimator
 from autora.state.delta import Result, State, wrap_to_use_state
 
 
-def model_disagreement_sample(s: State, **kwargs) -> State:
-    """Wrapper on [model_disagreement_sample_on_conditions][] which uses the `State` mechanism."""
-    return wrap_to_use_state(model_disagreement_sample_on_conditions)(s, **kwargs)
+def model_disagreement_sample_on_state(s: State, **kwargs) -> State:
+    """Wrapper on [model_disagreement_sample][] which uses the `State` mechanism."""
+    return wrap_to_use_state(model_disagreement_sample)(s, **kwargs)
 
 
-def model_disagreement_sample_on_conditions(
+def model_disagreement_sample(
     conditions: Union[pd.DataFrame, Iterable, Dict, np.ndarray, np.recarray],
     models: List[BaseEstimator],
     num_samples: int = 1,
@@ -41,7 +41,7 @@ def model_disagreement_sample_on_conditions(
         ... ]
 
         The function returns a `Result` object:
-        >>> model_disagreement_sample_on_conditions(
+        >>> model_disagreement_sample(
         ...     conditions={"x": [-2, -1, 0, 1]},
         ...     models=models,
         ...     num_samples=3
@@ -53,26 +53,26 @@ def model_disagreement_sample_on_conditions(
 
         In an obvious case where we have conditions at 0 (agreement) and 1 (disagreement),
         1 is chosen.
-        >>> model_disagreement_sample_on_conditions(
+        >>> model_disagreement_sample(
         ...     conditions={"x": [0, 1]}, models=models)["conditions"]
            x
         1  1
 
         In a less obvious case where we have conditions at -1 and 1 (equal disagreement),
         the first (-1) is chosen
-        >>> model_disagreement_sample_on_conditions(
+        >>> model_disagreement_sample(
         ...     conditions={"x": [-1, 1]}, models=models)["conditions"]
            x
         0 -1
 
         If we reorder the conditions, the first is still chosen:
-        >>> model_disagreement_sample_on_conditions(
+        >>> model_disagreement_sample(
         ...     conditions={"x": [1, -1]}, models=models)["conditions"]
            x
         0  1
 
         If we ask for as many samples as there are potential conditions, we get them all:
-        >>> model_disagreement_sample_on_conditions(
+        >>> model_disagreement_sample(
         ...     conditions={"x": [1, -1]}, models=models, num_samples=2
         ... )["conditions"]
            x
@@ -80,7 +80,7 @@ def model_disagreement_sample_on_conditions(
         1 -1
 
         If we ask for more samples, we get all the conditions (fewer than requested):
-        >>> model_disagreement_sample_on_conditions(
+        >>> model_disagreement_sample(
         ...     conditions={"x": [1, -1]}, models=models, num_samples=3
         ... )["conditions"]
            x
@@ -88,7 +88,7 @@ def model_disagreement_sample_on_conditions(
         1 -1
 
         The conditions are returned in order of their magnitude of disagreement:
-        >>> model_disagreement_sample_on_conditions(
+        >>> model_disagreement_sample(
         ...     conditions={"x": [-1, 0, 2]}, models=models, num_samples=3
         ... )["conditions"]
            x
@@ -97,7 +97,7 @@ def model_disagreement_sample_on_conditions(
         1  0
 
         Requesting zero samples returns an empty dataframe:
-        >>> model_disagreement_sample_on_conditions(
+        >>> model_disagreement_sample(
         ...     conditions={"x": [-1, 0, 2]}, models=models, num_samples=0
         ... )["conditions"]
         Empty DataFrame
@@ -142,7 +142,7 @@ def model_disagreement_sample_on_conditions(
         8  1.0  1.0   0  7.0
 
         The largest disagreement m1 - m0 is at (x1, x2) = (1, 1) -> m1 - m0 = 7
-        >>> model_disagreement_sample_on_conditions(
+        >>> model_disagreement_sample(
         ...     conditions=conditions, models=models, num_samples=1
         ... )["conditions"]
             x1   x2
@@ -151,7 +151,7 @@ def model_disagreement_sample_on_conditions(
         The 2nd-largest disagreement is at (x1, x2) = (0, 1) -> m1 - m0 = 5
         The 3rd-largest disagreement is at (x1, x2) = (1, 0) -> m1 - m0 = 4
         The equal 4th- largest disagreement is at (x1, x2) = {(-1, -1), (-1, 1)} -> m1 - m0 = 3
-        >>> model_disagreement_sample_on_conditions(
+        >>> model_disagreement_sample(
         ...     conditions=conditions, models=models, num_samples=5
         ... )["conditions"]
             x1   x2
@@ -169,7 +169,7 @@ def model_disagreement_sample_on_conditions(
             so the value (-1, -1) comes first.
 
         If we try to retrieve more samples than there are conditions, we get all the conditions:
-        >>> model_disagreement_sample_on_conditions(
+        >>> model_disagreement_sample(
         ...     conditions=conditions, models=models, num_samples=1_000
         ... )["conditions"]
             x1   x2
