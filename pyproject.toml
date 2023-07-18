@@ -17,7 +17,9 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "autora-core[dev]"
+    "autora-core[dev]",
+    "autora-theorist-bms",
+    "autora-theorist-darts"
 ]
 
 [project.urls]
