@@ -1,6 +1,6 @@
 [project]
 # UPDATE THIS BEFORE PUBLISHING
-name = "autora-experimentalist-sampler-model-disagreement"
+name = "autora-experimentalist-model-disagreement"
 description = "Compares weaknesses in multiple models"
 authors = [{ name = "Built by Sebastian Musslick, re-factored by Chad Williams", email = "sebastian_musslick@brown.edu" }]
 dynamic = ["version"]
