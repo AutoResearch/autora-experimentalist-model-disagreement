@@ -1,10 +1,11 @@
 import itertools
 from typing import Iterable, List
 import numpy as np
+import pandas as pd
 
 from autora.utils.deprecation import deprecated_alias
 
-def model_disagreement_sample(condition_pool: np.array, models: List, num_samples: int = 1):
+def sample(condition_pool: np.array, models: List, num_samples: int = 1):
     """
     A sampler that returns selected samples for independent variables
     for which the models disagree the most in terms of their predictions.
@@ -17,8 +18,11 @@ def model_disagreement_sample(condition_pool: np.array, models: List, num_sample
     Returns: Sampled pool
     """
 
-    if isinstance(condition_pool, Iterable):
+    if isinstance(condition_pool, Iterable) and not isinstance(condition_pool, pd.DataFrame):
         condition_pool = np.array(list(condition_pool))
+
+    condition_pool_copy = condition_pool.copy()
+    condition_pool = np.array(condition_pool)
 
     X_predict = np.array(condition_pool)
     if len(X_predict.shape) == 1:
@@ -63,6 +67,13 @@ def model_disagreement_sample(condition_pool: np.array, models: List, num_sample
     # sort the summed disagreements and select the top n
     idx = (-summed_disagreement).argsort()[:num_samples]
 
-    return condition_pool[idx]
+    condition_pool = condition_pool[idx]
 
+    if isinstance(condition_pool_copy, pd.DataFrame):
+        condition_pool = pd.DataFrame(condition_pool, columns=condition_pool_copy.columns)
+
+    return condition_pool
+
+model_disagreement_sample = sample
+model_disagreement_sample.__doc__ = """Alias for sample"""
 model_disagreement_sampler = deprecated_alias(model_disagreement_sample, "model_disagreement_sampler")

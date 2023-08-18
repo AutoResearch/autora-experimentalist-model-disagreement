@@ -10,7 +10,7 @@ $$
 # Example Code
 
 ```
-from autora.experimentalist.sampler.model_disagreement import model_disagreement_sample
+from autora.experimentalist.model_disagreement import model_disagreement_sample
 from autora.theorist.bms import BMSRegressor; BMSRegressor()
 from autora.theorist.darts import DARTSRegressor; DARTSRegressor()
 import numpy as np
