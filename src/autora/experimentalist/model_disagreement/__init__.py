@@ -1,11 +1,14 @@
 import itertools
-from typing import Iterable, List
+from typing import Iterable, List, Union
 import numpy as np
 import pandas as pd
 
 from autora.utils.deprecation import deprecated_alias
+from sklearn.preprocessing import StandardScaler
 
-def sample(conditions: np.array, models: List, num_samples: int = 1):
+def score_sample(conditions: Union[pd.DataFrame, np.ndarray],
+           models: List,
+           num_samples: int = 1):
     """
     A sampler that returns selected samples for independent variables
     for which the models disagree the most in terms of their predictions.
@@ -64,16 +67,43 @@ def sample(conditions: np.array, models: List, num_samples: int = 1):
     # sum up all model disagreements
     summed_disagreement = np.sum(model_disagreement, axis=0)
 
-    # sort the summed disagreements and select the top n
-    idx = (-summed_disagreement).argsort()[:num_samples]
-
-    conditions = conditions[idx]
-
     if isinstance(condition_pool_copy, pd.DataFrame):
         conditions = pd.DataFrame(conditions, columns=condition_pool_copy.columns)
+    else:
+        conditions = pd.DataFrame(conditions)
 
-    return conditions
+    # normalize the distances
+    scaler = StandardScaler()
+    score = scaler.fit_transform(summed_disagreement.reshape(-1, 1)).flatten()
+
+    # order rows in Y from highest to lowest
+    conditions["score"] = score
+    conditions = conditions.sort_values(by="score", ascending=False)
+
+    return conditions.head(num_samples)
+
+def sample(conditions: Union[pd.DataFrame, np.ndarray],
+           models: List,
+           num_samples: int = 1):
+    """
+    A sampler that returns selected samples for independent variables
+    for which the models disagree the most in terms of their predictions.
+
+    Args:
+        X: pool of IV conditions to evaluate in terms of model disagreement
+        models: List of Scikit-learn (regression or classification) models to compare
+        num_samples: number of samples to select
+
+    Returns: Sampled pool
+    """
+
+    selected_conditions = score_sample(conditions, models, num_samples)
+    selected_conditions.drop(columns=["score"], inplace=True)
+
+    return selected_conditions
 
 model_disagreement_sample = sample
 model_disagreement_sample.__doc__ = """Alias for sample"""
+model_disagreement_score_sample = score_sample
+model_disagreement_score_sample.__doc__ = """Alias for sample"""
 model_disagreement_sampler = deprecated_alias(model_disagreement_sample, "model_disagreement_sampler")
