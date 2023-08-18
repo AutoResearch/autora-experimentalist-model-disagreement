@@ -1,10 +1,11 @@
 import itertools
 from typing import Iterable, List
 import numpy as np
+import pandas as pd
 
 from autora.utils.deprecation import deprecated_alias
 
-def model_disagreement_sample(condition_pool: np.array, models: List, num_samples: int = 1):
+def sample(conditions: np.array, models: List, num_samples: int = 1):
     """
     A sampler that returns selected samples for independent variables
     for which the models disagree the most in terms of their predictions.
@@ -17,10 +18,13 @@ def model_disagreement_sample(condition_pool: np.array, models: List, num_sample
     Returns: Sampled pool
     """
 
-    if isinstance(condition_pool, Iterable):
-        condition_pool = np.array(list(condition_pool))
+    if isinstance(conditions, Iterable) and not isinstance(conditions, pd.DataFrame):
+        conditions = np.array(list(conditions))
 
-    X_predict = np.array(condition_pool)
+    condition_pool_copy = conditions.copy()
+    conditions = np.array(conditions)
+
+    X_predict = np.array(conditions)
     if len(X_predict.shape) == 1:
         X_predict = X_predict.reshape(-1, 1)
 
@@ -63,6 +67,13 @@ def model_disagreement_sample(condition_pool: np.array, models: List, num_sample
     # sort the summed disagreements and select the top n
     idx = (-summed_disagreement).argsort()[:num_samples]
 
-    return condition_pool[idx]
+    conditions = conditions[idx]
 
+    if isinstance(condition_pool_copy, pd.DataFrame):
+        conditions = pd.DataFrame(conditions, columns=condition_pool_copy.columns)
+
+    return conditions
+
+model_disagreement_sample = sample
+model_disagreement_sample.__doc__ = """Alias for sample"""
 model_disagreement_sampler = deprecated_alias(model_disagreement_sample, "model_disagreement_sampler")
