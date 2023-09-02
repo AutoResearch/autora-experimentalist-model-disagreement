@@ -4,7 +4,7 @@ You will need:
 
 - `python` 3.8 or greater: [https://www.python.org/downloads/](https://www.python.org/downloads/)
 
-*Model Disagreement Sampler* is a part of the `autora` package:
+*Model Disagreement Experimentalist* is a part of the `autora` package:
 
 ```shell
 pip install -U autora["experimentalist-model-disagreement"]

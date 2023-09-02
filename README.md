@@ -1,6 +1,6 @@
-# AutoRA Model Disagreement Sampler
+# AutoRA Model Disagreement Experimentlist
 
-The model disagreement sampler identifies experimental conditions $\vec{x}' \in X'$ with respect to
+The model disagreement experimentlist identifies experimental conditions $\vec{x}' \in X'$ with respect to
 a pairwise distance metric between theorist models, $P_{M_{i}}(\hat{y}, \vec{x}')$:
 
 $$
@@ -26,6 +26,6 @@ darts_theorist = DARTSRegressor()
 bms_theorist.fit(X,y)
 darts_theorist.fit(X,y)
 
-#Sampler
+#experimentlist
 X_new = model_disagreement_sample(X, [bms_theorist, darts_theorist], n)
 ```
