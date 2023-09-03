@@ -11,7 +11,7 @@ def score_sample(conditions: Union[pd.DataFrame, np.ndarray],
                  models: List,
                  num_samples: Optional[int] = None):
     """
-    A sampler that returns selected samples for independent variables
+    A experimentalist that returns selected samples for independent variables
     for which the models disagree the most in terms of their predictions.
 
     Args:
@@ -87,11 +87,12 @@ def score_sample(conditions: Union[pd.DataFrame, np.ndarray],
         return conditions.head(num_samples)
 
 
+
 def sample(conditions: Union[pd.DataFrame, np.ndarray],
            models: List,
            num_samples: int = 1):
     """
-    A sampler that returns selected samples for independent variables
+    A experimentalist that returns selected samples for independent variables
     for which the models disagree the most in terms of their predictions.
 
     Args:
@@ -109,8 +110,6 @@ def sample(conditions: Union[pd.DataFrame, np.ndarray],
 
 
 model_disagreement_sample = sample
-model_disagreement_sample.__doc__ = """Alias for sample"""
 model_disagreement_score_sample = score_sample
-model_disagreement_score_sample.__doc__ = """Alias for sample"""
-model_disagreement_sampler = deprecated_alias(model_disagreement_sample,
-                                              "model_disagreement_sampler")
+model_disagreement_sampler = deprecated_alias(
+    model_disagreement_sample, "model_disagreement_sampler")
