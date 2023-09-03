@@ -1,14 +1,15 @@
 import itertools
-from typing import Iterable, List, Union
+from typing import Iterable, List, Union, Optional
 import numpy as np
 import pandas as pd
 
 from autora.utils.deprecation import deprecated_alias
 from sklearn.preprocessing import StandardScaler
 
+
 def score_sample(conditions: Union[pd.DataFrame, np.ndarray],
-           models: List,
-           num_samples: int = 1):
+                 models: List,
+                 num_samples: Optional[int] = None):
     """
     A experimentalist that returns selected samples for independent variables
     for which the models disagree the most in terms of their predictions.
@@ -80,7 +81,11 @@ def score_sample(conditions: Union[pd.DataFrame, np.ndarray],
     conditions["score"] = score
     conditions = conditions.sort_values(by="score", ascending=False)
 
-    return conditions.head(num_samples)
+    if num_samples is None:
+        return conditions
+    else:
+        return conditions.head(num_samples)
+
 
 
 def sample(conditions: Union[pd.DataFrame, np.ndarray],
