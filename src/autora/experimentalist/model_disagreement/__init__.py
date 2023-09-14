@@ -1,25 +1,54 @@
 import itertools
-from typing import Iterable, List, Union, Optional
+from typing import Iterable, List, Optional, Union
+
 import numpy as np
 import pandas as pd
-
-from autora.utils.deprecation import deprecated_alias
 from sklearn.preprocessing import StandardScaler
 
+from autora.utils.deprecation import deprecated_alias
 
-def score_sample(conditions: Union[pd.DataFrame, np.ndarray],
-                 models: List,
-                 num_samples: Optional[int] = None):
+
+def score_sample(
+    conditions: Union[pd.DataFrame, np.ndarray],
+    models: List,
+    num_samples: Optional[int] = None,
+):
     """
     A experimentalist that returns selected samples for independent variables
     for which the models disagree the most in terms of their predictions.
 
     Args:
-        X: pool of IV conditions to evaluate in terms of model disagreement
+        conditions: pool of IV conditions to evaluate in terms of model disagreement
         models: List of Scikit-learn (regression or classification) models to compare
         num_samples: number of samples to select
 
     Returns: Sampled pool
+
+    Examples:
+        If a model is undefined at a certain condition, the disagreement on that point is set to 0:
+        >>> class ModelUndefined:
+        ...     def predict(self, X):
+        ...         return np.log(X)
+        >>> class ModelDefinined:
+        ...     def predict(self, X):
+        ...         return X
+        >>> modelUndefined = ModelUndefined()
+        >>> modelDefined = ModelDefinined()
+        >>> conditions_defined = np.array([1, 2, 3])
+        >>> score_sample(conditions_defined, [modelUndefined, modelDefined], 3)
+           0     score
+        2  3  1.364948
+        1  2 -0.362023
+        0  1 -1.002924
+
+        >>> conditions_undefined = np.array([-1, 0, 1, 2, 3])
+        >>> score_sample(conditions_undefined, [modelUndefined, modelDefined], 5)
+           0     score
+        4  3  1.752985
+        3  2  0.330542
+        2  1 -0.197345
+        0 -1 -0.943091
+        1  0 -0.943091
     """
 
     if isinstance(conditions, Iterable) and not isinstance(conditions, pd.DataFrame):
@@ -61,6 +90,10 @@ def score_sample(conditions: Union[pd.DataFrame, np.ndarray],
         else:
             disagreement = np.mean((y_a - y_b) ** 2, axis=1)
 
+        disagreement[np.isinf(disagreement)] = 0
+
+        disagreement = np.nan_to_num(disagreement)
+
         model_disagreement.append(disagreement)
 
     assert len(model_disagreement) >= 1, "No disagreements to compare."
@@ -87,16 +120,15 @@ def score_sample(conditions: Union[pd.DataFrame, np.ndarray],
         return conditions.head(num_samples)
 
 
-
-def sample(conditions: Union[pd.DataFrame, np.ndarray],
-           models: List,
-           num_samples: int = 1):
+def sample(
+    conditions: Union[pd.DataFrame, np.ndarray], models: List, num_samples: int = 1
+):
     """
     A experimentalist that returns selected samples for independent variables
     for which the models disagree the most in terms of their predictions.
 
     Args:
-        X: pool of IV conditions to evaluate in terms of model disagreement
+        conditions: pool of IV conditions to evaluate in terms of model disagreement
         models: List of Scikit-learn (regression or classification) models to compare
         num_samples: number of samples to select
 
@@ -112,4 +144,5 @@ def sample(conditions: Union[pd.DataFrame, np.ndarray],
 model_disagreement_sample = sample
 model_disagreement_score_sample = score_sample
 model_disagreement_sampler = deprecated_alias(
-    model_disagreement_sample, "model_disagreement_sampler")
+    model_disagreement_sample, "model_disagreement_sampler"
+)
