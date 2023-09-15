@@ -1,4 +1,5 @@
 import itertools
+import warnings
 from typing import Iterable, List, Optional, Union
 
 import numpy as np
@@ -90,8 +91,10 @@ def score_sample(
         else:
             disagreement = np.mean((y_a - y_b) ** 2, axis=1)
 
+        if np.isinf(disagreement).any() or np.isnan(disagreement).any():
+            warnings.warn('Found nan or inf values in model predictions, '
+                          'setting disagreement there to 0')
         disagreement[np.isinf(disagreement)] = 0
-
         disagreement = np.nan_to_num(disagreement)
 
         model_disagreement.append(disagreement)
