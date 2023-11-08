@@ -18,3 +18,5 @@ repos:
         args:
         - "--max-line-length=100"
         - "--extend-ignore=E203"
+default_language_version:
+  python: python3
