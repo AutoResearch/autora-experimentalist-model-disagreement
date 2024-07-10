@@ -52,15 +52,18 @@ def score_sample(
         1  0 -0.943091
     """
 
-    if isinstance(conditions, Iterable) and not isinstance(conditions, pd.DataFrame):
+    if isinstance(conditions, Iterable) and not isinstance(conditions, pd.DataFrame) and not isinstance(conditions, list):
         conditions = np.array(list(conditions))
 
     condition_pool_copy = conditions.copy()
-    conditions = np.array(conditions)
 
-    X_predict = np.array(conditions)
-    if len(X_predict.shape) == 1:
-        X_predict = X_predict.reshape(-1, 1)
+    if isinstance(conditions, list):
+        X_predict = conditions
+    else:
+        conditions = np.array(conditions)
+        X_predict = np.array(conditions)
+        if len(X_predict.shape) == 1:
+            X_predict = X_predict.reshape(-1, 1)
 
     model_disagreement = list()
 
@@ -79,23 +82,17 @@ def score_sample(
                 "Models must both have `predict_proba` or `predict` method."
             )
 
-        # get predictions from both models
-        y_a = model_a_predict(X_predict)
-        y_b = model_b_predict(X_predict)
-
-        assert y_a.shape == y_b.shape, "Models must have same output shape."
-
-        # determine the disagreement between the two models in terms of mean-squared error
-        if len(y_a.shape) == 1:
-            disagreement = (y_a - y_b) ** 2
+        if isinstance(X_predict, list):
+            disagreement_part_list = list()
+            for element in X_predict:
+                if not isinstance(element, np.ndarray):
+                    raise ValueError("X_predict must be a list of numpy arrays if it is a list.")
+                else:
+                    disagreement_part = compute_disagreement(model_a_predict, model_b_predict, element)
+                    disagreement_part_list.append(disagreement_part)
+            disagreement = np.sum(disagreement_part_list, axis=1)
         else:
-            disagreement = np.mean((y_a - y_b) ** 2, axis=1)
-
-        if np.isinf(disagreement).any() or np.isnan(disagreement).any():
-            warnings.warn('Found nan or inf values in model predictions, '
-                          'setting disagreement there to 0')
-        disagreement[np.isinf(disagreement)] = 0
-        disagreement = np.nan_to_num(disagreement)
+            disagreement = compute_disagreement(model_a_predict, model_b_predict, X_predict)
 
         model_disagreement.append(disagreement)
 
@@ -106,6 +103,8 @@ def score_sample(
 
     if isinstance(condition_pool_copy, pd.DataFrame):
         conditions = pd.DataFrame(conditions, columns=condition_pool_copy.columns)
+    elif isinstance(condition_pool_copy, list):
+        conditions = pd.DataFrame({'X': conditions})
     else:
         conditions = pd.DataFrame(conditions)
 
@@ -122,6 +121,25 @@ def score_sample(
     else:
         return conditions.head(num_samples)
 
+def compute_disagreement(model_a_predict, model_b_predict, X_predict):
+    # get predictions from both models
+    y_a = model_a_predict(X_predict)
+    y_b = model_b_predict(X_predict)
+
+    assert y_a.shape == y_b.shape, "Models must have same output shape."
+
+    # determine the disagreement between the two models in terms of mean-squared error
+    if len(y_a.shape) == 1:
+        disagreement = (y_a - y_b) ** 2
+    else:
+        disagreement = np.mean((y_a - y_b) ** 2, axis=1)
+
+    if np.isinf(disagreement).any() or np.isnan(disagreement).any():
+        warnings.warn('Found nan or inf values in model predictions, '
+                      'setting disagreement there to 0')
+    disagreement[np.isinf(disagreement)] = 0
+    disagreement = np.nan_to_num(disagreement)
+    return disagreement
 
 def sample(
     conditions: Union[pd.DataFrame, np.ndarray], models: List, num_samples: int = 1
