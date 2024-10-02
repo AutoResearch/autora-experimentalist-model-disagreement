@@ -71,12 +71,11 @@ def score_sample(
     for model_a, model_b in itertools.combinations(models, 2):
 
         # determine the prediction method
+        predict_proba = False
         if hasattr(model_a, "predict_proba") and hasattr(model_b, "predict_proba"):
-            model_a_predict = model_a.predict_proba
-            model_b_predict = model_b.predict_proba
+            predict_proba = True
         elif hasattr(model_a, "predict") and hasattr(model_b, "predict"):
-            model_a_predict = model_a.predict
-            model_b_predict = model_b.predict
+            predict_proba = False
         else:
             raise AttributeError(
                 "Models must both have `predict_proba` or `predict` method."
@@ -88,11 +87,11 @@ def score_sample(
                 if not isinstance(element, np.ndarray):
                     raise ValueError("X_predict must be a list of numpy arrays if it is a list.")
                 else:
-                    disagreement_part = compute_disagreement(model_a_predict, model_b_predict, element)
+                    disagreement_part = compute_disagreement(model_a, model_b, element, predict_proba)
                     disagreement_part_list.append(disagreement_part)
             disagreement = np.sum(disagreement_part_list, axis=1)
         else:
-            disagreement = compute_disagreement(model_a_predict, model_b_predict, X_predict)
+            disagreement = compute_disagreement(model_a, model_b, X_predict, predict_proba)
 
         model_disagreement.append(disagreement)
 
@@ -121,10 +120,14 @@ def score_sample(
     else:
         return conditions.head(num_samples)
 
-def compute_disagreement(model_a_predict, model_b_predict, X_predict):
+def compute_disagreement(model_a, model_b, X_predict, predict_proba):
     # get predictions from both models
-    y_a = model_a_predict(X_predict)
-    y_b = model_b_predict(X_predict)
+    if predict_proba:
+        y_a = model_a.predict_proba(X_predict)
+        y_b = model_b.predict_proba(X_predict)
+    else:
+        y_a = model_a.predict(X_predict)
+        y_b = model_b.predict(X_predict)
 
     assert y_a.shape == y_b.shape, "Models must have same output shape."
 
