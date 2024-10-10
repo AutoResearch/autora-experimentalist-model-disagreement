@@ -9,7 +9,7 @@ from sklearn.preprocessing import StandardScaler
 from autora.utils.deprecation import deprecated_alias
 
 
-def score_sample_cd(
+def score_sample_custom_distance(
     conditions: Union[pd.DataFrame, np.ndarray],
     models: List,
     distance_fct: Callable = lambda x, y: (x - y) ** 2,
@@ -48,14 +48,14 @@ def score_sample_cd(
         array([1, 2, 3])
         >>> sq_model.predict(_conditions)
         array([1, 4, 9])
-        >>> score_sample_cd(_conditions, [id_model, sq_model])
+        >>> score_sample_custom_distance(_conditions, [id_model, sq_model])
            0  score
         2  3     36
         1  2      4
         0  1      0
 
         ... we can use our own distance function (for example binary 1 and 0 for different or equal)
-        >>> score_sample_cd(_conditions, [id_model, sq_model], lambda x,y : x != y)
+        >>> score_sample_custom_distance(_conditions, [id_model, sq_model], lambda x,y : x != y)
            0  score
         1  2      1
         2  3      1
@@ -78,7 +78,7 @@ def score_sample_cd(
         >>> def distance(x, y):
         ...     return np.sqrt((x[0] - y[0])**2 + (x[1] - y[1])**2)
 
-        >>> score_sample_cd(_conditions, [id_model, sq_model], distance)
+        >>> score_sample_custom_distance(_conditions, [id_model, sq_model], distance)
              0    1     score
         3  0.5  0.5  0.353553
         0  0.0  1.0  0.000000
@@ -107,7 +107,7 @@ def score_sample_cd(
         return conditions_new.head(num_samples)
 
 
-def sample_cd(
+def sample_custom_distance(
     conditions: Union[pd.DataFrame, np.ndarray],
     models: List,
     distance_fct: Callable = lambda x, y: (x - y) ** 2,
@@ -129,7 +129,7 @@ def sample_cd(
     Returns: Sampled pool
     """
 
-    selected_conditions = score_sample_cd(
+    selected_conditions = score_sample_custom_distance(
         conditions, models, distance_fct, aggregate_fct, num_samples
     )
     selected_conditions.drop(columns=["score"], inplace=True)
@@ -332,5 +332,5 @@ model_disagreement_score_sample = score_sample
 model_disagreement_sampler = deprecated_alias(
     model_disagreement_sample, "model_disagreement_sampler"
 )
-model_disagreement_sampler_cd = sample_cd
-model_disagreement_score_sample_cd = score_sample_cd
+model_disagreement_sampler_custom_distance = sample_custom_distance
+model_disagreement_score_sample_custom_distance = score_sample_custom_distance
