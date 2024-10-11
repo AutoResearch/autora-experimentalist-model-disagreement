@@ -177,27 +177,6 @@ def score_sample(
         2  1 -0.197345
         0 -1 -0.943091
         1  0 -0.943091
-
-        Conditions and observations might be dataframes with single values:
-        >>> conditions_s = pd.DataFrame({'x_1': [1, 2, 3], 'x_2': [2, 3, 4]})
-        >>> class ModelSingle_a():
-        ...     def predict(self, conditions):
-        ...         return conditions['x_1'] + conditions['x_2']
-
-        >>> class ModelSingle_b():
-        ...     def predict(self, conditions):
-        ...         return 2 * conditions['x_1'] + .5 * conditions['x_2']
-
-
-        But they might also have vectors as entries:
-        >>> conditions_v = pd.DataFrame({'x_1':
-        ...     [np.array([1, 2]), np.array([3, 4])], 'x_2': [np.array([5, 6]), np.array([7, 8])]})
-        >>> class ModelVector_a():
-        ...     def predict(selfm conditions):
-        ...         return conditions['x_1'] + conditions['x_2']
-
-
-
     """
 
     if (
@@ -250,8 +229,6 @@ def score_sample(
             disagreement = compute_disagreement(
                 model_a, model_b, X_predict, predict_proba
             )
-        else:
-            disagreement = compute_disagreement(model_a, model_b, X_predict, predict_proba)
         model_disagreement.append(disagreement)
 
     assert len(model_disagreement) >= 1, "No disagreements to compare."
