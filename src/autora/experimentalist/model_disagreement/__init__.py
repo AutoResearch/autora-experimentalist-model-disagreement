@@ -250,7 +250,8 @@ def score_sample(
             disagreement = compute_disagreement(
                 model_a, model_b, X_predict, predict_proba
             )
-
+        else:
+            disagreement = compute_disagreement(model_a, model_b, X_predict, predict_proba)
         model_disagreement.append(disagreement)
 
     assert len(model_disagreement) >= 1, "No disagreements to compare."
