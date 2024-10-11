@@ -1,12 +1,139 @@
 import itertools
 import warnings
-from typing import Iterable, List, Optional, Union
+from typing import Callable, Iterable, List, Optional, Union
 
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
 from autora.utils.deprecation import deprecated_alias
+
+
+def score_sample_custom_distance(
+    conditions: Union[pd.DataFrame, np.ndarray],
+    models: List,
+    distance_fct: Callable = lambda x, y: (x - y) ** 2,
+    aggregate_fct: Callable = lambda x: np.sum(x, axis=0),
+    num_samples: Optional[int] = None,
+):
+    """
+    An experimentalist that returns selected samples for independent variables
+    for which the models disagree the most in terms of their predictions. The disagreement
+    measurement is customizable.
+
+
+    Args:
+        conditions: pool of IV conditions to evaluate in terms of model disagreement
+        models: List of Scikit-learn (regression or classification) models to compare
+        distance_fct: distance function to use on the predictions
+        aggregate_fct: aggregate function to use on the pairwise distances of the models
+        num_samples: number of samples to select
+
+    Returns:
+        Sampled pool with score
+
+
+    Examples:
+        We can use this without passing in a distance function (squared distance as default) ...
+        >>> class IdentityModel:
+        ...     def predict(self, X):
+        ...         return X
+        >>> class SquareModel:
+        ...     def predict(self, X):
+        ...         return X**2
+        >>> id_model = IdentityModel()
+        >>> sq_model = SquareModel()
+        >>> _conditions = np.array([1, 2, 3])
+        >>> id_model.predict(_conditions)
+        array([1, 2, 3])
+        >>> sq_model.predict(_conditions)
+        array([1, 4, 9])
+        >>> score_sample_custom_distance(_conditions, [id_model, sq_model])
+           0  score
+        2  3     36
+        1  2      4
+        0  1      0
+
+        ... we can use our own distance function (for example binary 1 and 0 for different or equal)
+        >>> score_sample_custom_distance(_conditions, [id_model, sq_model], lambda x,y : x != y)
+           0  score
+        1  2      1
+        2  3      1
+        0  1      0
+
+        ... this is mostly usefull if the predict function of the model doesn't return a
+        standard one-dimensional array:
+        >>> _conditions = np.array([[0, 1], [1, 0], [1, 1], [.5, .5]])
+        >>> id_model.predict(_conditions)
+        array([[0. , 1. ],
+               [1. , 0. ],
+               [1. , 1. ],
+               [0.5, 0.5]])
+        >>> sq_model.predict(_conditions)
+        array([[0.  , 1.  ],
+               [1.  , 0.  ],
+               [1.  , 1.  ],
+               [0.25, 0.25]])
+
+        >>> def distance(x, y):
+        ...     return np.sqrt((x[0] - y[0])**2 + (x[1] - y[1])**2)
+
+        >>> score_sample_custom_distance(_conditions, [id_model, sq_model], distance)
+             0    1     score
+        3  0.5  0.5  0.353553
+        0  0.0  1.0  0.000000
+        1  1.0  0.0  0.000000
+        2  1.0  1.0  0.000000
+    """
+    disagreements = []
+    for model_a, model_b in itertools.combinations(models, 2):
+        if hasattr(model_a, "predict_proba") and hasattr(model_b, "predict_proba"):
+            model_a_predict = model_a.predict_proba
+            model_b_predict = model_b.predict_proba
+        else:
+            model_a_predict = model_a.predict
+            model_b_predict = model_b.predict
+        y_A = model_a_predict(conditions)
+        y_B = model_b_predict(conditions)
+        disagreements.append([distance_fct(y_a, y_b) for y_a, y_b in zip(y_A, y_B)])
+    score = aggregate_fct(disagreements)
+
+    conditions_new = pd.DataFrame(conditions)
+    conditions_new["score"] = np.array(score).tolist()
+    conditions_new = conditions_new.sort_values(by="score", ascending=False)
+    if num_samples is None:
+        return conditions_new
+    else:
+        return conditions_new.head(num_samples)
+
+
+def sample_custom_distance(
+    conditions: Union[pd.DataFrame, np.ndarray],
+    models: List,
+    distance_fct: Callable = lambda x, y: (x - y) ** 2,
+    aggregate_fct: Callable = lambda x: np.sum(x, axis=0),
+    num_samples: Optional[int] = 1,
+):
+    """
+    An experimentalist that returns selected samples for independent variables
+    for which the models disagree the most in terms of their predictions. The disagreement
+    measurement is customizable.
+
+    Args:
+        conditions: pool of IV conditions to evaluate in terms of model disagreement
+        models: List of Scikit-learn (regression or classification) models to compare
+        distance_fct: distance function to use on the predictions
+        aggregate_fct: aggregate function to use on the pairwise distances of the models
+        num_samples: number of samples to select
+
+    Returns: Sampled pool
+    """
+
+    selected_conditions = score_sample_custom_distance(
+        conditions, models, distance_fct, aggregate_fct, num_samples
+    )
+    selected_conditions.drop(columns=["score"], inplace=True)
+    return selected_conditions
 
 
 def score_sample(
@@ -50,9 +177,34 @@ def score_sample(
         2  1 -0.197345
         0 -1 -0.943091
         1  0 -0.943091
+
+        Conditions and observations might be dataframes with single values:
+        >>> conditions_s = pd.DataFrame({'x_1': [1, 2, 3], 'x_2': [2, 3, 4]})
+        >>> class ModelSingle_a():
+        ...     def predict(self, conditions):
+        ...         return conditions['x_1'] + conditions['x_2']
+
+        >>> class ModelSingle_b():
+        ...     def predict(self, conditions):
+        ...         return 2 * conditions['x_1'] + .5 * conditions['x_2']
+
+
+        But they might also have vectors as entries:
+        >>> conditions_v = pd.DataFrame({'x_1':
+        ...     [np.array([1, 2]), np.array([3, 4])], 'x_2': [np.array([5, 6]), np.array([7, 8])]})
+        >>> class ModelVector_a():
+        ...     def predict(selfm conditions):
+        ...         return conditions['x_1'] + conditions['x_2']
+
+
+
     """
 
-    if isinstance(conditions, Iterable) and not isinstance(conditions, pd.DataFrame) and not isinstance(conditions, list):
+    if (
+        isinstance(conditions, Iterable)
+        and not isinstance(conditions, pd.DataFrame)
+        and not isinstance(conditions, list)
+    ):
         conditions = np.array(list(conditions))
 
     condition_pool_copy = conditions.copy()
@@ -85,14 +237,21 @@ def score_sample(
             disagreement_part_list = list()
             for element in X_predict:
                 if not isinstance(element, np.ndarray):
-                    raise ValueError("X_predict must be a list of numpy arrays if it is a list.")
+                    raise ValueError(
+                        "X_predict must be a list of numpy arrays if it is a list."
+                    )
                 else:
-                    disagreement_part = compute_disagreement(model_a, model_b, element, predict_proba)
+                    disagreement_part = compute_disagreement(
+                        model_a, model_b, element, predict_proba
+                    )
                     disagreement_part_list.append(disagreement_part)
             disagreement = np.sum(disagreement_part_list, axis=1)
         else:
+            disagreement = compute_disagreement(
+                model_a, model_b, X_predict, predict_proba
+            )
+        else:
             disagreement = compute_disagreement(model_a, model_b, X_predict, predict_proba)
-
         model_disagreement.append(disagreement)
 
     assert len(model_disagreement) >= 1, "No disagreements to compare."
@@ -103,7 +262,7 @@ def score_sample(
     if isinstance(condition_pool_copy, pd.DataFrame):
         conditions = pd.DataFrame(conditions, columns=condition_pool_copy.columns)
     elif isinstance(condition_pool_copy, list):
-        conditions = pd.DataFrame({'X': conditions})
+        conditions = pd.DataFrame({"X": conditions})
     else:
         conditions = pd.DataFrame(conditions)
 
@@ -119,6 +278,7 @@ def score_sample(
         return conditions
     else:
         return conditions.head(num_samples)
+
 
 def compute_disagreement(model_a, model_b, X_predict, predict_proba):
     # get predictions from both models
@@ -138,11 +298,14 @@ def compute_disagreement(model_a, model_b, X_predict, predict_proba):
         disagreement = np.mean((y_a - y_b) ** 2, axis=1)
 
     if np.isinf(disagreement).any() or np.isnan(disagreement).any():
-        warnings.warn('Found nan or inf values in model predictions, '
-                      'setting disagreement there to 0')
+        warnings.warn(
+            "Found nan or inf values in model predictions, "
+            "setting disagreement there to 0"
+        )
     disagreement[np.isinf(disagreement)] = 0
     disagreement = np.nan_to_num(disagreement)
     return disagreement
+
 
 def sample(
     conditions: Union[pd.DataFrame, np.ndarray], models: List, num_samples: int = 1
@@ -170,3 +333,5 @@ model_disagreement_score_sample = score_sample
 model_disagreement_sampler = deprecated_alias(
     model_disagreement_sample, "model_disagreement_sampler"
 )
+model_disagreement_sampler_custom_distance = sample_custom_distance
+model_disagreement_score_sample_custom_distance = score_sample_custom_distance
